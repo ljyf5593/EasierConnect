@@ -1,7 +1,7 @@
 package core
 
 import (
-	"gvisor.dev/gvisor/pkg/bufferv2"
+	"gvisor.dev/gvisor/pkg/buffer"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 	"gvisor.dev/gvisor/pkg/tcpip/network/ipv4"
@@ -68,11 +68,28 @@ func (ep *EasyConnectEndpoint) WritePackets(list stack.PacketBufferList) (int, t
 func (ep *EasyConnectEndpoint) WriteTo(buf []byte) {
 	if ep.IsAttached() {
 		packetBuffer := stack.NewPacketBuffer(stack.PacketBufferOptions{
-			Payload: bufferv2.MakeWithData(buf),
+			Payload: buffer.MakeWithData(buf),
 		})
 		ep.dispatcher.DeliverNetworkPacket(header.IPv4ProtocolNumber, packetBuffer)
 		packetBuffer.DecRef()
 	}
+}
+
+func (ep *EasyConnectEndpoint) Close() {
+	ep.dispatcher = nil
+}
+
+func (ep *EasyConnectEndpoint) ParseHeader(buf *stack.PacketBuffer) bool {
+	return true
+}
+
+func (ep *EasyConnectEndpoint) SetLinkAddress(addr tcpip.LinkAddress) {
+}
+
+func (ep *EasyConnectEndpoint) SetMTU(uint32) {
+}
+
+func (ep *EasyConnectEndpoint) SetOnCloseAction(func()) {
 }
 
 func SetupStack(ip []byte, endpoint *EasyConnectEndpoint) *stack.Stack {
@@ -91,7 +108,7 @@ func SetupStack(ip []byte, endpoint *EasyConnectEndpoint) *stack.Stack {
 	}
 
 	// assign ip
-	addr := tcpip.Address(ip)
+	addr := tcpip.AddrFrom4([4]byte(ip))
 	protoAddr := tcpip.ProtocolAddress{
 		AddressWithPrefix: tcpip.AddressWithPrefix{
 			Address:   addr,
