@@ -1,7 +1,7 @@
 package core
 
 import (
-	"gvisor.dev/gvisor/pkg/bufferv2"
+	"gvisor.dev/gvisor/pkg/buffer"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 	"gvisor.dev/gvisor/pkg/tcpip/network/ipv4"
@@ -16,6 +16,7 @@ const defaultMTU uint32 = 1400
 // implements LinkEndpoint
 type EasyConnectEndpoint struct {
 	dispatcher stack.NetworkDispatcher
+	linkAddr   tcpip.LinkAddress
 	OnRecv     func(buf []byte)
 }
 
@@ -23,12 +24,16 @@ func (ep *EasyConnectEndpoint) MTU() uint32 {
 	return defaultMTU
 }
 
+func (ep *EasyConnectEndpoint) SetMTU(mtu uint32) {
+	
+}
+
 func (ep *EasyConnectEndpoint) MaxHeaderLength() uint16 {
 	return 0
 }
 
 func (ep *EasyConnectEndpoint) LinkAddress() tcpip.LinkAddress {
-	return ""
+	return ep.linkAddr
 }
 
 func (ep *EasyConnectEndpoint) Capabilities() stack.LinkEndpointCapabilities {
@@ -51,6 +56,14 @@ func (ep *EasyConnectEndpoint) ARPHardwareType() header.ARPHardwareType {
 
 func (ep *EasyConnectEndpoint) AddHeader(buffer *stack.PacketBuffer) {}
 
+func (ep *EasyConnectEndpoint) ParseHeader(buffer *stack.PacketBuffer) bool {
+	return true
+}
+
+func (ep *EasyConnectEndpoint) SetLinkAddress(addr tcpip.LinkAddress) {
+	ep.linkAddr = addr
+}
+
 func (ep *EasyConnectEndpoint) WritePackets(list stack.PacketBufferList) (int, tcpip.Error) {
 	for _, packetBuffer := range list.AsSlice() {
 		buf := []byte{}
@@ -68,11 +81,17 @@ func (ep *EasyConnectEndpoint) WritePackets(list stack.PacketBufferList) (int, t
 func (ep *EasyConnectEndpoint) WriteTo(buf []byte) {
 	if ep.IsAttached() {
 		packetBuffer := stack.NewPacketBuffer(stack.PacketBufferOptions{
-			Payload: bufferv2.MakeWithData(buf),
+			Payload: buffer.MakeWithData(buf),
 		})
 		ep.dispatcher.DeliverNetworkPacket(header.IPv4ProtocolNumber, packetBuffer)
 		packetBuffer.DecRef()
 	}
+}
+
+func (ep *EasyConnectEndpoint) SetOnCloseAction(func()) {}
+
+func (ep *EasyConnectEndpoint) Close() {
+	ep.dispatcher = nil
 }
 
 func SetupStack(ip []byte, endpoint *EasyConnectEndpoint) *stack.Stack {
@@ -91,7 +110,7 @@ func SetupStack(ip []byte, endpoint *EasyConnectEndpoint) *stack.Stack {
 	}
 
 	// assign ip
-	addr := tcpip.Address(ip)
+	addr := tcpip.Address(tcpip.AddrFromSlice(ip))
 	protoAddr := tcpip.ProtocolAddress{
 		AddressWithPrefix: tcpip.AddressWithPrefix{
 			Address:   addr,
