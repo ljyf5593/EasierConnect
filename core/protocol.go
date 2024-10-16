@@ -189,7 +189,7 @@ func StartProtocol(endpoint *EasyConnectEndpoint, server string, token *[48]byte
 		for counter < 5 {
 			err := BlockRXStream(server, token, ipRev, endpoint, debug)
 			if err != nil {
-				log.Print("Error occurred while recv, retrying: " + err.Error())
+				log.Printf("Error occurred while recv %v, retrying: %s\n", *ipRev, err.Error())
 			}
 			counter += 1
 		}
@@ -203,7 +203,7 @@ func StartProtocol(endpoint *EasyConnectEndpoint, server string, token *[48]byte
 		for counter < 5 {
 			err := BlockTXStream(server, token, ipRev, endpoint, debug)
 			if err != nil {
-				log.Print("Error occurred while send, retrying: " + err.Error())
+				log.Printf("Error occurred while send: %v, retrying: %s\n", *ipRev, err.Error())
 			}
 			counter += 1
 		}
